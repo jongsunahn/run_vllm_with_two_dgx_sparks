@@ -1,0 +1,60 @@
+x-ray-common: &ray-common
+  image: ${VLLM_IMAGE}
+  container_name: node
+  shm_size: "10.24g"
+  gpus: all
+  restart: unless-stopped
+  volumes:
+    - ${HF_HOME}:/root/.cache/huggingface:rw
+  # 🚨 network_mode: host 제거
+  networks:
+    - vllm_net # macvlan 네트워크에 연결
+  environment:
+    # .env 파일에서 VLLM_HOST_IP를 읽어옴
+    RAY_NODE_IP_ADDRESS: ${VLLM_HOST_IP} 
+    RAY_OVERRIDE_RESOLVED_IP: ${VLLM_HOST_IP}
+    HF_HUB_OFFLINE: "1"
+    # 컨테이너 내의 가상 인터페이스 이름(보통 eth0)을 사용
+    MN_IF_NAME: eth0
+    UCX_NET_DEVICES: eth0
+    NCCL_SOCKET_IFNAME: eth0
+    OMPI_MCA_btl_tcp_if_include: eth0
+    GLOO_SOCKET_IFNAME: eth0
+    TP_SOCKET_IFNAME: eth0
+    RAY_memory_monitor_refresh_ms: ${RAY_memory_monitor_refresh_ms:-0}
+
+networks:
+  vllm_net:
+    driver: macvlan
+    driver_opts:
+      # .env 파일에서 호스트의 물리 NIC 이름을 읽어옴
+      parent: ${MN_IF_NAME} 
+    ipam:
+      config:
+        # .env 파일에서 네트워크 정보를 읽어옴
+        - subnet: ${MACVLAN_SUBNET}
+          gateway: ${MACVLAN_GATEWAY}
+
+services:
+  head:
+    <<: *ray-common
+    container_name: head-node
+    networks:
+      vllm_net:
+        # .env 파일에서 이 컨테이너의 고유 IP를 할당
+        ipv4_address: ${VLLM_HOST_IP} 
+    entrypoint: ["ray"]
+    command: ["start","--head","--port=6379","--node-ip-address=${VLLM_HOST_IP}","--dashboard-host=0.0.0.0","--block"]
+    profiles: ["head"]
+
+  worker:
+    <<: *ray-common
+    container_name: worker-node
+    networks:
+      vllm_net:
+        # .env 파일에서 이 컨테이너의 고유 IP를 할당
+        ipv4_address: ${VLLM_HOST_IP}
+    entrypoint: ["ray"]
+    # .env 파일의 HEAD_NODE_IP를 참조하여 Head에 연결
+    command: ["start","--address=${HEAD_NODE_IP}:6379","--node-ip-address=${VLLM_HOST_IP}","--block"]
+    profiles: ["worker"]
