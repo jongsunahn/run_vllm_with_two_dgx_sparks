@@ -6,6 +6,7 @@ x-ray-common: &ray-common
   restart: unless-stopped
   volumes:
     - ${HF_HOME}:/root/.cache/huggingface:rw
+    - ${TIKTOKEN_ENCODINGS_BASE}:/root/harmony_encodings:ro
   # 🚨 network_mode: host 제거
   networks:
     - vllm_net # macvlan 네트워크에 연결
@@ -22,7 +23,7 @@ x-ray-common: &ray-common
     GLOO_SOCKET_IFNAME: eth0
     TP_SOCKET_IFNAME: eth0
     RAY_memory_monitor_refresh_ms: ${RAY_memory_monitor_refresh_ms:-0}
-
+    TIKTOKEN_ENCODINGS_BASE: /root/harmony_encodings
 networks:
   vllm_net:
     driver: macvlan
