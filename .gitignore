@@ -1,4 +1,3 @@
-*.sh
 .env
 .venv
 .venv/*
