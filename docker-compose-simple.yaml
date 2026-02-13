@@ -1,0 +1,32 @@
+services:
+  vllm-clean:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-clean
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    shm_size: 32gb
+    network_mode: host
+    volumes:
+      - /home/eroom/.cache/huggingface:/root/.cache/huggingface
+    environment:
+      - HF_TOKEN=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
+      - NCCL_SOCKET_IFNAME=enp1s0f0np0
+      - NCCL_IB_DISABLE=0
+      - NCCL_IB_HCA=mlx5_0
+      - NCCL_DEBUG=WARN
+    command: >
+      --model openai/gpt-oss-120b
+      --host 0.0.0.0
+      --port 8000
+      --trust-remote-code
+      --dtype bfloat16
+      --max-model-len 8192
+      --gpu-memory-utilization 0.90
+    stdin_open: true
+    tty: true

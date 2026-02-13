@@ -3,8 +3,6 @@ x-ray-common: &ray-common
   build:
     context: .
     dockerfile: Dockerfile
-    args:
-      BASE_IMAGE: ${VLLM_IMAGE}
   image: custom-vllm-ray:latest
   container_name: node
   shm_size: "10.24g"
@@ -12,18 +10,17 @@ x-ray-common: &ray-common
   restart: unless-stopped
   volumes:
     - ${HF_HOME}:/root/.cache/huggingface:rw
-    - ${TIKTOKEN_ENCODINGS_BASE}:/root/harmony_encodings:ro
+    - ${TIKTOKEN_ENCODINGS_BASE}:/root/harmony_encodings:rw
   # 🚨 network_mode: host 제거
   networks:
     - vllm_net # macvlan 네트워크에 연결
   dns:
     - 8.8.8.8
-    - 1.1.1.1
+    - 1.1.1.1  
   environment:
     # .env 파일에서 VLLM_HOST_IP를 읽어옴
     RAY_NODE_IP_ADDRESS: ${VLLM_HOST_IP} 
     RAY_OVERRIDE_RESOLVED_IP: ${VLLM_HOST_IP}
-    HF_HUB_OFFLINE: "1"
     # 컨테이너 내의 가상 인터페이스 이름(보통 eth0)을 사용
     MN_IF_NAME: eth0
     UCX_NET_DEVICES: eth0
@@ -33,6 +30,7 @@ x-ray-common: &ray-common
     TP_SOCKET_IFNAME: eth0
     RAY_memory_monitor_refresh_ms: ${RAY_memory_monitor_refresh_ms:-0}
     TIKTOKEN_ENCODINGS_BASE: /root/harmony_encodings
+    TRITON_PTXAS_PATH: /opt/venv/lib/python3.12/site-packages/torch/bin/ptxas
 networks:
   vllm_net:
     driver: macvlan
